@@ -22,14 +22,16 @@ function StatisticsPage() {
     const fetchData = async () => {
       try {
         const response = await fetch('http://localhost:3000/api/stats');
-        const data = await response.json().catch(() => ({}));
+        
         if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
           setError(data.error || 'Failed to fetch statistics');
           log('Stats error', data.error || response.statusText);
           return;
         }
 
-        setUrls(data);
+        const data = await response.json();
+        setUrls(Array.isArray(data) ? data : []);
         log('Fetched statistics', data);
       } catch (err) {
         setError('Could not connect to backend. Is it running on port 3000?');
@@ -72,7 +74,7 @@ function StatisticsPage() {
                   <TableCell>{u.totalClicks || 0}</TableCell>
                   <TableCell>
                     {u.clicks?.length > 0
-                      ? u.clicks[u.clicks.length - 1].timestamp
+                      ? new Date(u.clicks[u.clicks.length - 1].timestamp).toLocaleString()
                       : '-'}
                   </TableCell>
                   <TableCell>
@@ -85,6 +87,11 @@ function StatisticsPage() {
             </TableBody>
           </Table>
         </TableContainer>
+      )}
+      {!error && urls.length === 0 && (
+        <Typography variant="body1" sx={{ mt: 2 }}>
+          No URLs found. Start by shortening a URL!
+        </Typography>
       )}
     </Box>
   );

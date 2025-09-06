@@ -4,12 +4,18 @@ const LoggingContext = createContext();
 
 export function LoggingProvider({ children }) {
   const log = (message, data = null) => {
-    
+    console.log('[LOG]', message, data);
     fetch('http://localhost:5000/api/logs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, data, timestamp: new Date().toISOString() })
-    }).catch(() => {});
+      body: JSON.stringify({ 
+        message, 
+        data, 
+        timestamp: new Date().toISOString() 
+      })
+    }).catch((err) => {
+      console.warn('Failed to send log to service:', err.message);
+    });
   };
 
   return (
@@ -20,5 +26,9 @@ export function LoggingProvider({ children }) {
 }
 
 export function useLogging() {
-  return useContext(LoggingContext);
+  const context = useContext(LoggingContext);
+  if (!context) {
+    throw new Error('useLogging must be used within a LoggingProvider');
+  }
+  return context;
 }

@@ -11,7 +11,7 @@ function generateShortCode() {
   return Date.now().toString(36);
 }
 
-function isvalidurl(str) {
+function isValidUrl(str) {
   try {
     const u = new URL(str);
     return u.protocol === "http:" || u.protocol === "https:";
@@ -20,22 +20,34 @@ function isvalidurl(str) {
   }
 }
 
-function isvalidshortcode(code) {
-  return typeof code === "string" && /^[a-zA-Z0-9]+$/.test(code) && code.length >= 4 && code.length <= 20;
+function isValidShortcode(code) {
+  return typeof code === "string" && 
+         /^[a-zA-Z0-9]+$/.test(code) && 
+         code.length >= 4 && 
+         code.length <= 20;
 }
 
-function coarsegeofromip(ip) {
+function coarseGeoFromIp(ip) {
   if (!ip) return "unknown";
   if (ip === "::1" || ip === "127.0.0.1") return "local";
   if (ip.startsWith("10.") || ip.startsWith("192.168.") || ip.startsWith("172.16.")) return "private";
   return "unknown";
 }
+
 exports.createShortUrl = (req, res) => {
   try {
     const { url, validity = 30, shortcode } = req.body || {};
 
-    if (!url || typeof url !== "string" || !isvalidurl(url)) {
-      return res.status(400).json({ error: "Invalid URL. Provide a valid http/https URL string." });
+    if (!url || typeof url !== "string" || !isValidUrl(url)) {
+      return res.status(400).json({ 
+        error: "Invalid URL. Provide a valid http/https URL string." 
+      });
+    }
+
+    if (shortcode && !isValidShortcode(shortcode)) {
+      return res.status(400).json({ 
+        error: "Shortcode must be 4-20 alphanumeric characters" 
+      });
     }
 
     if (shortcode && urlStore.has(shortcode)) {
@@ -48,18 +60,24 @@ exports.createShortUrl = (req, res) => {
     const newUrl = urlStore.add(url, code, minutes);
     const shortLink = `${req.protocol}://${req.get("host")}/${newUrl.shortcode}`;
 
-    return res.status(201).json({ shortLink, expiry: newUrl.expiry });
+    return res.status(201).json({ 
+      shortLink, 
+      expiry: newUrl.expiry 
+    });
   } catch (err) {
     console.error("createShortUrl error:", err);
     return res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
 exports.getStats = (req, res) => {
   try {
     const { shortcode } = req.params;
     const data = urlStore.getByShortcode(shortcode);
 
-    if (!data) return res.status(404).json({ error: "Shortcode not found" });
+    if (!data) {
+      return res.status(404).json({ error: "Shortcode not found" });
+    }
 
     const lastClick = data.clicks.length > 0 ? data.clicks[data.clicks.length - 1].timestamp : null;
     const source = data.clicks.length > 0 ? data.clicks[data.clicks.length - 1].referrer : null;
@@ -78,11 +96,11 @@ exports.getStats = (req, res) => {
     return res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
 exports.getAllStats = (req, res) => {
   try {
-
     const allUrls = urlStore.getAll().map(u => ({
-      shortLink: `${req.protocol}://${req.get("host")}/${u.shortcode}`, // must exist
+      shortLink: `${req.protocol}://${req.get("host")}/${u.shortcode}`,
       originalUrl: u.originalUrl,
       expiry: u.expiry,
       totalClicks: u.clicks.length,
@@ -103,8 +121,13 @@ exports.redirectUrl = (req, res) => {
     const { shortcode } = req.params;
     const data = urlStore.getByShortcode(shortcode);
 
-    if (!data) return res.status(404).json({ error: "Shortcode not found" });
-    if (new Date() > new Date(data.expiry)) return res.status(410).json({ error: "Link expired" });
+    if (!data) {
+      return res.status(404).json({ error: "Shortcode not found" });
+    }
+    
+    if (new Date() > new Date(data.expiry)) {
+      return res.status(410).json({ error: "Link expired" });
+    }
 
     const ipRaw = req.ip || req.connection?.remoteAddress || "";
     const ip = Array.isArray(ipRaw) ? ipRaw[0] : ipRaw;
@@ -113,7 +136,7 @@ exports.redirectUrl = (req, res) => {
       timestamp: new Date().toISOString(),
       referrer: req.get("Referer") || "direct",
       ip,
-      location: coarsegeofromip(ip)
+      location: coarseGeoFromIp(ip)
     });
 
     return res.redirect(data.originalUrl);

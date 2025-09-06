@@ -1,6 +1,6 @@
-
 function loggingMiddleware(req, res, next) {
   const start = Date.now();
+  
   res.on("finish", () => {
     const duration = Date.now() - start;
     console.log(JSON.stringify({
@@ -9,10 +9,11 @@ function loggingMiddleware(req, res, next) {
       url: req.originalUrl,
       status: res.statusCode,
       duration: `${duration}ms`,
-      body: req.body
+      body: req.method === 'POST' ? req.body : undefined
     }));
   });
 
   next();
 }
+
 module.exports = loggingMiddleware;

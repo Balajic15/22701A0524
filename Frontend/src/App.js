@@ -12,7 +12,7 @@ function App() {
         <AppBar position="static">
           <Toolbar>
             <Typography variant="h6" sx={{ flexGrow: 1 }}>
-              AffordMed URL Shortener
+              URL Shortener by Balaji 22701A0524
             </Typography>
             <Button color="inherit" component={Link} to="/">Shorten URL</Button>
             <Button color="inherit" component={Link} to="/stats">Statistics</Button>

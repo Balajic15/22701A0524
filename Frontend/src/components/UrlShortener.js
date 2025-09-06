@@ -11,50 +11,47 @@ function UrlShortener() {
   const { log } = useLogging();
 
   const handleSubmit = async () => {
-  setError(null);
-  setResult(null);
+    setError(null);
+    setResult(null);
 
-  if (!url || !/^https?:\/\//.test(url)) {
-    setError('Please enter a valid URL starting with http:// or https://');
-    return;
-  }
-  if (validity && isNaN(validity)) {
-    setError('Validity must be a number (minutes)');
-    return;
-  }
-
-  log('Submitting URL shortening request', { url, validity, shortcode });
-
-  try {
-    const response = await fetch('http://localhost:3000/api', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        url,
-        validity: validity ? Number(validity) : 30,
-        shortcode
-      })
-    });
-
-    const data = await response.json().catch(() => ({})); 
-
-    if (!response.ok) {
-
-      setError(data.error || `Request failed with status ${response.status}`);
-      log('Shorten error', data.error || response.statusText);
+    if (!url || !/^https?:\/\//.test(url)) {
+      setError('Please enter a valid URL starting with http:// or https://');
+      return;
+    }
+    if (validity && (isNaN(validity) || Number(validity) <= 0)) {
+      setError('Validity must be a positive number (minutes)');
       return;
     }
 
-    setResult(data);  
-    log('Shorten success', data);
+    log('Submitting URL shortening request', { url, validity, shortcode });
 
-  } catch (err) {
-    
-    setError('❌ Could not connect to backend. Is it running on port 3000?');
-    log('Shorten error', err.message);
-  }
-};
+    try {
+      const response = await fetch('http://localhost:3000/api', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url,
+          validity: validity ? Number(validity) : 30,
+          shortcode: shortcode || undefined
+        })
+      });
 
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setError(data.error || `Request failed with status ${response.status}`);
+        log('Shorten error', data.error || response.statusText);
+        return;
+      }
+
+      const data = await response.json();
+      setResult(data);
+      log('Shorten success', data);
+
+    } catch (err) {
+      setError('Could not connect to backend. Is it running on port 3000?');
+      log('Shorten error', err.message);
+    }
+  };
 
   return (
     <Box>
@@ -72,6 +69,7 @@ function UrlShortener() {
         label="Validity (minutes, optional)"
         fullWidth
         margin="normal"
+        type="number"
         value={validity}
         onChange={(e) => setValidity(e.target.value)}
       />
@@ -94,7 +92,7 @@ function UrlShortener() {
               {result.shortLink}
             </a>
             <br />
-            Expiry: {result.expiry || 'No expiry'}
+            Expiry: {result.expiry ? new Date(result.expiry).toLocaleString() : 'No expiry'}
           </Alert>
         </Box>
       )}
